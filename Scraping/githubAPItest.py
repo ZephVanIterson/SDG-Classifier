@@ -384,7 +384,7 @@ def trainSVMForOneSDG(repoInfo, SDG):
         x.append(tempX)
         tempY = listToStringWithoutBrackets(i[9]).split(",")
         tempY = tempY[0]
-        if tempY == SDG:
+        if int(tempY) == int(SDG):
             y.append(1)
         else:
             y.append(0)
@@ -414,7 +414,7 @@ def trainSVMForOneSDG(repoInfo, SDG):
 
     # Evaluate the model
     accuracy = grid.score(XTest, yTest)
-    print("Accuracy for SDG #"+SDG+":", accuracy)
+    print("Accuracy for SDG #"+str(SDG)+":", accuracy)
 
     # predictions = grid.predict(XTest)
     # for i in range(10):
@@ -508,7 +508,8 @@ def main():
     svmModel = None
     if input() == 'y':
         #svmModel = trainSvm(repoInfo)
-        svmModel = trainSVMFPartial(repoInfo)
+        for i in range(1,18):
+            svmModel = trainSVMForOneSDG(repoInfo, i)
 
     #print classified test set from 
 
