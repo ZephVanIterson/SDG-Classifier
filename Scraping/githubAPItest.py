@@ -4,11 +4,14 @@ import base64
 import csv
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import GridSearchCV
 from sklearn.multiclass import OneVsRestClassifier
+from sklearn.multioutput import MultiOutputClassifier
 from sklearn.preprocessing import MultiLabelBinarizer
+import numpy
 
 import datetime
 import re
@@ -289,12 +292,13 @@ def getUserInfoFromGithub(user):
 
     return reposContributedTo
 
-
-
-def trainSvm(repoInfo):
+#Uses entire data set but only considers the four most common SDGs, all others are considered as none
+def trainSVMFPartial(repoInfo):
     x = []
     y = []
-    yGrid = []
+    yBin = []
+    count = 0
+        
 
     # Concatenate name, description, and topics into a single string for each data point
     for i in repoInfo:
@@ -302,16 +306,38 @@ def trainSvm(repoInfo):
         x.append(tempX)
         tempY = listToStringWithoutBrackets(i[9]).split(",")
         tempY = tempY[0]
-        y.append([tempY])
-        # tempYGrid = [0] * 17
-        # tempYGrid[int(tempY)-1] = 1
-        # yGrid.append(tempYGrid)
+        tempY = int(tempY)
+
+        if tempY == 3:
+            tempY = 1
+        elif tempY == 4:
+            tempY = 2
+        elif tempY == 16:
+            tempY = 3
+        elif tempY == 17:
+            tempY = 4
+        else:
+            tempY = 0
+            count += 1
+
+        y.append(tempY)
+        tempYBin = [0] * 4
+        if tempY != 0:
+            tempYBin[int(tempY)-1] = 1
+        yBin.append(tempYBin)
 
 
     # Convert y to binary matrix representation
-    mlb = MultiLabelBinarizer()
-    y_bin = mlb.fit_transform(y)
+    # mlb = MultiLabelBinarizer()
+    # y_bin = mlb.fit_transform(y)
+    y_bin = numpy.array(yBin)
 
+    for i in range(10):
+        print(y_bin[i])
+        print(y[i])
+
+    print("Count: ", count)
+   
     # Feature extraction
     vectorizer = TfidfVectorizer()
     XVectors = vectorizer.fit_transform(x)
@@ -320,19 +346,139 @@ def trainSvm(repoInfo):
     XTrain, XTest, yTrain, yTest = train_test_split(XVectors, y_bin, test_size=0.2, random_state=42)
 
     # Define parameter grid
-    param_grid = {'estimator__C': [0.1, 1, 10, 100], 'estimator__gamma': [1, 0.1, 0.01, 0.001], 'estimator__kernel': ['linear', 'rbf']}
+    svcParamGrid = {'estimator__C': [0.1,0.5, 1,5, 10, 100], 'estimator__gamma': [5,1,0.5, 0.1, 0.01, 0.001], 'estimator__kernel': ['linear', 'rbf']}
+    rfParamGrid = {'estimator__n_estimators': [10, 50, 100, 200, 500], 'estimator__max_features': ['auto', 'sqrt', 'log2']}
+
+    # SVCModel = SVC(C=1, gamma=0.1, kernel='rbf')
+    # RFModel = RandomForestClassifier(n_estimators=10, random_state=42)
+
+    # OVRC = OneVsRestClassifier(SVCModel)
+    # OVRC.fit(XTrain, yTrain)
 
     # Train the SVM model with GridSearchCV
-    grid = GridSearchCV(OneVsRestClassifier(SVC()), param_grid, refit=True, verbose=2, scoring='accuracy', n_jobs=-1)
+    grid = GridSearchCV(OneVsRestClassifier(SVC()), svcParamGrid, refit=True, verbose=0, n_jobs=-1)
+    #for random forest
+    #grid = GridSearchCV(OneVsRestClassifier(RandomForestClassifier()), rfParamGrid, refit=True, verbose=0, n_jobs=-1)
     grid.fit(XTrain, yTrain)
 
     # Evaluate the model
     accuracy = grid.score(XTest, yTest)
     print("Accuracy:", accuracy)
 
-    predictions = grid.predict_proba(XTest)
-    for i in range(10):
+    predictions = grid.predict(XTest)
+    for i in range(50):
         print(f"Predicted: {predictions[i]}\tActual: {yTest[i]}")
+    
+    return grid
+
+#Uses entire data set but only considers the specified SDG as 1, all others are considered 0
+#Very high accuracy for any individual
+def trainSVMForOneSDG(repoInfo, SDG):
+    x = []
+    y = []
+    yBin = []
+
+    # Concatenate name, description, and topics into a single string for each data point
+    for i in repoInfo:
+        tempX = str(i[0]) + " " + str(i[1])  + " " + listToStringWithoutBrackets(i[3])
+        x.append(tempX)
+        tempY = listToStringWithoutBrackets(i[9]).split(",")
+        tempY = tempY[0]
+        if tempY == SDG:
+            y.append(1)
+        else:
+            y.append(0)
+   
+    # Feature extraction
+    vectorizer = TfidfVectorizer()
+    XVectors = vectorizer.fit_transform(x)
+
+    # Split the data into train and test sets
+    XTrain, XTest, yTrain, yTest = train_test_split(XVectors, y, test_size=0.2, random_state=42)
+
+    # Define parameter grid
+    svcParamGrid = {'estimator__C': [0.1,0.5, 1,5, 10, 100], 'estimator__gamma': [5,1,0.5, 0.1, 0.01, 0.001], 'estimator__kernel': ['linear', 'rbf']}
+    rfParamGrid = {'estimator__n_estimators': [10, 50, 100, 200, 500], 'estimator__max_features': ['auto', 'sqrt', 'log2']}
+
+    # SVCModel = SVC(C=1, gamma=0.1, kernel='rbf')
+    # RFModel = RandomForestClassifier(n_estimators=10, random_state=42)
+
+    # OVRC = OneVsRestClassifier(SVCModel)
+    # OVRC.fit(XTrain, yTrain)
+
+    # Train the SVM model with GridSearchCV
+    grid = GridSearchCV(OneVsRestClassifier(SVC()), svcParamGrid, refit=True, verbose=0, n_jobs=-1)
+    #for random forest
+    #grid = GridSearchCV(OneVsRestClassifier(RandomForestClassifier()), rfParamGrid, refit=True, verbose=0, n_jobs=-1)
+    grid.fit(XTrain, yTrain)
+
+    # Evaluate the model
+    accuracy = grid.score(XTest, yTest)
+    print("Accuracy for SDG #"+SDG+":", accuracy)
+
+    # predictions = grid.predict(XTest)
+    # for i in range(10):
+    #     print(f"Predicted: {predictions[i]}\tActual: {yTest[i]}")
+    
+    return grid
+
+def trainSvm(repoInfo):
+    x = []
+    y = []
+    yBin = []
+
+    # Concatenate name, description, and topics into a single string for each data point
+    for i in repoInfo:
+        tempX = str(i[0]) + " " + str(i[1])  + " " + listToStringWithoutBrackets(i[3])
+        x.append(tempX)
+        tempY = listToStringWithoutBrackets(i[9]).split(",")
+        tempY = tempY[0]
+        y.append(tempY)
+        tempYBin = [0] * 17
+        tempYBin[int(tempY)-1] = 1
+        yBin.append(tempYBin)
+
+
+    # Convert y to binary matrix representation
+    # mlb = MultiLabelBinarizer()
+    # y_bin = mlb.fit_transform(y)
+    y_bin = numpy.array(yBin)
+
+    # for i in range(10):
+    #     print(y_bin[i])
+    #     print(y[i])
+   
+    # Feature extraction
+    vectorizer = TfidfVectorizer()
+    XVectors = vectorizer.fit_transform(x)
+
+    # Split the data into train and test sets
+    XTrain, XTest, yTrain, yTest = train_test_split(XVectors, y_bin, test_size=0.2, random_state=42)
+
+    # Define parameter grid
+    svcParamGrid = {'estimator__C': [0.1,0.5, 1,5, 10, 100], 'estimator__gamma': [5,1,0.5, 0.1, 0.01, 0.001], 'estimator__kernel': ['linear', 'rbf']}
+    rfParamGrid = {'estimator__n_estimators': [10, 50, 100, 200, 500], 'estimator__max_features': ['auto', 'sqrt', 'log2']}
+
+    # SVCModel = SVC(C=1, gamma=0.1, kernel='rbf')
+    # RFModel = RandomForestClassifier(n_estimators=10, random_state=42)
+
+    # OVRC = OneVsRestClassifier(SVCModel)
+    # OVRC.fit(XTrain, yTrain)
+
+    # Train the SVM model with GridSearchCV
+    grid = GridSearchCV(OneVsRestClassifier(SVC()), svcParamGrid, refit=True, verbose=0, n_jobs=-1)
+    #for random forest
+    #grid = GridSearchCV(OneVsRestClassifier(RandomForestClassifier()), rfParamGrid, refit=True, verbose=0, n_jobs=-1)
+    grid.fit(XTrain, yTrain)
+
+    # Evaluate the model
+    accuracy = grid.score(XTest, yTest)
+    print("Accuracy:", accuracy)
+
+    predictions = grid.predict(XTest)
+    for i in range(10):
+        print(f"Predicted: {predictions[i]}\nActual: {yTest[i]}")
+    
 
     return grid
 
@@ -361,7 +507,8 @@ def main():
     print("Train SVM (y/n)")
     svmModel = None
     if input() == 'y':
-        svmModel = trainSvm(repoInfo)
+        #svmModel = trainSvm(repoInfo)
+        svmModel = trainSVMFPartial(repoInfo)
 
     #print classified test set from 
 
