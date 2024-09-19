@@ -28,6 +28,7 @@ def loadRepoList():
         
         reader = csv.reader(file)
         repoList = list(reader)
+        
         #skip first line for titles
         repoList = repoList[1:]
 
@@ -281,3 +282,15 @@ def getUserInfoFromGithub(user):
 
     return reposContributedTo
 
+def getAllNonSGRepos():
+    # Get the list of repositories
+    repoList = loadRepoList()
+    entries = []
+    
+    # Get the information for each repository
+    for repo in repoList:
+        entry = getRepoInfoFromGithub(repo)
+        if entry:
+            entries.append(entry)
+
+    return entries
