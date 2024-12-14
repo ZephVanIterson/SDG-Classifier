@@ -8,7 +8,7 @@ from RandomForest import *
 
 
 
-accessToken = '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'
+accessToken = ''
 headers = {'Authorization': 'token ' + accessToken}
 repoListCSV = 'OSS4SG-Project-List-Clean.csv'
 #repoListCSV = 'testdata.csv'
