@@ -1,5 +1,13 @@
 
 from githubscraping import * 
+#INCLUDE MODELS (llm.py, svm.py, etc)
+#import LLM
+import SVM
+#import groq
+import RandomForest
+import utility
+
+
 
 def main():
     print("-----------------Started-----------------")
@@ -17,6 +25,23 @@ def main():
     else:
         repoInfo = loadRepoInfo()
 
+
+    #Train and test models
+    print("Train and test models? (y/n)")
+    if input() == 'y':
+        print("Training Random Forest")
+        RandomForest.trainRF(repoInfo)
+        print("Training SVM")
+        SVM.trainSVM(repoInfo)
+
+        #llm runs from its own file
+
+
+        #test models
+        print("Testing Random Forest")
+        RandomForest.testRF(repoInfo)
+        print("Testing SVM")
+        SVM.testSVM(repoInfo)
 
 
 

@@ -5,10 +5,10 @@ import os
 
 from utility import *
 
-from repoScraping import loadRepoInfo
+from githubscraping import loadRepoInfo
 
 os.environ["OPENAI_API_BASE"] = "https://api.groq.com/openai/v1"
-os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = ""
 os.environ["OPENAI_MODEL_NAME"] = "llama3-8b-8192"
 
 repoName = ""

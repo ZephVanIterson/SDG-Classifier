@@ -10,9 +10,9 @@ from RandomForest import *
 
 accessToken = ''
 headers = {'Authorization': 'token ' + accessToken}
-repoListCSV = 'OSS4SG-Project-List-Clean.csv'
+repoListCSV = 'Datasets/OSS4SG-Project-List-Clean.csv'
 #repoListCSV = 'testdata.csv'
-repoInfoCSV = 'OSS4SG-Project-Info.csv'
+repoInfoCSV = 'Datasets/OSS4SG-Project-Info.csv'
 deletedRepos = []
 pattern = re.compile('<.*?>')
 threshold = 0.5
